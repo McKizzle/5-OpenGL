@@ -1,4 +1,3 @@
-#!/usr/bin/python
 from particles import *
 from pylab import *
 from particleInitialize import *
@@ -75,7 +74,6 @@ if __name__ == '__main__':
     glutInitWindowSize(400,400)
     glutCreateWindow('Particle Bounce Extreme')
     glClearColor(0.,0.,0.,1.)
-    glutMainLoop();
 
     # Initialize
     print "Initializing the Particles";
