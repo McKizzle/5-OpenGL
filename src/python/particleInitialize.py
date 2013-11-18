@@ -1,6 +1,6 @@
 from pylab import *
 
-print "Inside of particleInitialize.py"
+# print "Inside of particleInitialize.py"
 
 def particleInitialize(p,initialization,L):
         vel=1.0

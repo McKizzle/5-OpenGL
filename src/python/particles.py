@@ -1,7 +1,7 @@
 from numpy import * 
 from pylab import rand
 
-print "Inside of particles.py"
+# print "Inside of particles.py"
 
 # PARTICLES MODULE:
 # This set of classes was developed to model interacting spherical particles in 3
