@@ -37,7 +37,7 @@ class GranularMaterialForce:
         d, dx, dy, dz = p.distanceMatrix(p.x,p.y,p.z)
         
         # Compute overlap
-        dr = d - triu(p.sumOfRadii) - tril(p.sumOfRadii)
+        dr = d - triu(p.sumOfRadii) - tril(p.sumOfRadii)        
 
         # No forces arising in no overlap cases
         dr[dr>0]=0
@@ -147,7 +147,7 @@ class Particles:
         self.r = hstack((self.r,r))
         self.N = self.N+1
         temp = tile(self.r,(self.N,1))
-        self.sumOfRadii = temp + temp.T 
+        self.sumOfRadii = temp + temp.T # what does .T do? Transpose the numpy array
         self.ratioOfRadii = temp / temp.T
         self.f(self)
 
@@ -172,7 +172,7 @@ class Particles:
         ztemp = tile(z,(self.N,1))
         dz = ztemp - ztemp.T
      
-        # Particles 'feel' each other across the periodic boundaries
+        # Particles 'feel' each other across the periodic boundaries (that explains why they bunch into a box)
         if self.periodicX:
             dx[dx>self.L/2]=dx[dx > self.L/2]-self.L
             dx[dx<-self.L/2]=dx[dx < -self.L/2]+self.L

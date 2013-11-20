@@ -7,7 +7,9 @@ from OpenGL.GLU import *
 import sys, time
 
 # BOB -- GL 2.1, GLX 1.4
-# Mr. Effarantix -- GL X.X, GLX X.X -- TBA
+# Mr. Effarantix -- GL X.X, GLX X.X
+
+PAUSE = False
 
 # This program is a 'driver' for a simple simulation of partilces in a box with
 # periodic boundary conditions. Your objective will be to complete the code here
@@ -30,14 +32,16 @@ persp_enabled = True;
 
 tStart = t0 = time.time()
 
-dt = 0.1   # Time step taken by the time integration routine.
+dt = 0.1   # Time step taken by the time integration routine. (Also the frame rate)
 L = 10.0    # Size of the box.
 t = 0      # Initial time
 
-# Particle update data:
-COUNT = 100                  # Number of time steps computed
-UPDATE_FRAMES = 2            # How often to redraw screen
+
+# Particle Update Data:
+FRAME = 0
+FRAME_RATE_MULTIPLIER = 6    # Increase the speed of the frames. (6 == 60fps)
 ADD_PARTICLE_INTERVAL = 10   # How often to add a new particle
+MAX_PARTICLES = 12          # When to stop adding particles. 
 
 # How resolved are the spheres?
 STACKS = 25
@@ -89,19 +93,39 @@ def draw():
     glPopMatrix() 
 
     glutSwapBuffers()
+
+# Force the simulation to update at a constant rate. 
+# not properly implemented 
+#   FIXME dt is not being properly used
+# to upate the simulation relative to time. 
+def timer(v):
+    integrate(f, p)
     
+    global FRAME
+    FRAME = FRAME + 1
+    if mod(FRAME, ADD_PARTICLE_INTERVAL) == 0 and p.N < MAX_PARTICLES: 
+        p.addParticle( 0.25 * randn(), L, 0.25 * randn(), 0, 0, 0, 0.3 * randn() + 1.0)
+
+    # Calculate overlap areas.  
+    # Find position differences
+    d = p.distanceMatrix(p.x,p.y,p.z)[0]
+    
+    # Compute overlap
+    dr = d - triu(p.sumOfRadii) - tril(p.sumOfRadii)        
+
+    # No forces arising in no overlap cases
+    dr[dr>0]=0
+    dr[dr<0]=1
+
+    if FRAME == 1600:
+        print dr
+
+    glutPostRedisplay()
+    if not PAUSE:
+        glutTimerFunc(int(dt * 1000 / FRAME_RATE_MULTIPLIER), timer, 1) 
 
 def idle():
-    global COUNT
-    for i in range(UPDATE_FRAMES):
-        integrate(f,p) # Move the system forward in time
-        COUNT = COUNT + 1 
-        if mod(COUNT,ADD_PARTICLE_INTERVAL) == 0:
-            # Syntax is addParticle(x,y,z,vx,vy,vz,radius)
-            # Note y is into page.
-            p.addParticle(.25*randn(),L,.25*randn(),0,0,0,.3*randn()+1.0)
-            f(p)  # Update forces
-        glutPostRedisplay()
+    glutPostRedisplay()
 
 # Key event handler
 #   q: exit
@@ -109,6 +133,7 @@ def idle():
 #   a: pan left
 #   d: pan right
 #   s: pan backwards
+#   p: pause simulation
 def key(k, x, y):
     if ord(k) == 27:
         exit()
@@ -125,7 +150,9 @@ def key(k, x, y):
     elif k == 'e':
         agent_pos[1] = agent_pos[1] - 0.25
     elif k == 'p':
-        a = 1
+        global PAUSE
+        PAUSE = True if not PAUSE else False
+        glutTimerFunc(10, timer, FRAME)
 
 # Special key event handler.
 #   up key: rotate the model about the x axis counterclockwise.
@@ -139,20 +166,22 @@ def key(k, x, y):
 #   <F5>: toggle the universe boundries.
 def special(k, x, y):
     if k == GLUT_KEY_UP:
-        print "Rotating Down"
-        agent_hdng[1] = agent_hdng[1] - 5.0
-    elif k == GLUT_KEY_DOWN:
-        print "Rotating Up"
+        # print "Rotating Down"
         agent_hdng[1] = agent_hdng[1] + 5.0
+    elif k == GLUT_KEY_DOWN:
+        # print "Rotating Up"
+        agent_hdng[1] = agent_hdng[1] - 5.0
     elif k == GLUT_KEY_LEFT:
-        print "Rotating Left"
-        agent_hdng[0] = agent_hdng[0] + 5.0
-    elif k == GLUT_KEY_RIGHT:
-        print "Rotating Right"
+        # print "Rotating Left"
         agent_hdng[0] = agent_hdng[0] - 5.0
+    elif k == GLUT_KEY_RIGHT:
+        # print "Rotating Right"
+        agent_hdng[0] = agent_hdng[0] + 5.0
     elif k == GLUT_KEY_F2:
         persp_enabled = False if persp_enabled else True 
         print persp_enabled
+    elif k == GLUT_KEY_F9:
+        print "FRAME: %s" % FRAME
 
 def reshape(width, height):
     # keep the aspect ratio for the viewport
@@ -184,6 +213,8 @@ if __name__ == '__main__':
     glutReshapeFunc(reshape)
     glutKeyboardFunc(key)
     glutSpecialFunc(special)
+
+    glutTimerFunc(10, timer, FRAME)
 
     # Hand off control to event loop
     glutMainLoop()
