@@ -21,6 +21,12 @@ LGT_AMB = [0.5, 0.5, 0.5, 1.0]
 LGT_DIFF = [1.0, 1.0, 1.0, 1.0]
 LGT_POS = [20, 20, 20]
 
+# Agent Parameters
+agent_pos  = [0.0, 0.0, -20.0] # The position of the viewer as (x, y, z)
+agent_hdng = [0.0, 0.0] # The orientation of the viewer as (yaw, pitch)
+
+# OpenGL Parameters
+persp_enabled = True;
 
 tStart = t0 = time.time()
 
@@ -46,14 +52,16 @@ particleInitialize(p,'one',L)
 integrate = VerletIntegrator(dt)
 
 def init(width, height): 
-    print "Initializing the OpenGL scene."
+    glViewport(0, 0, width, height)
     glClearColor(0.0 ,0.0, 0.0, 1.0) # Clear to black 
     glClearDepth(1.0)
     glEnable(GL_DEPTH_TEST)
     glShadeModel(GL_SMOOTH)
-    glMatrixMode(GL_PROJECTION)
+    glMatrixMode(GL_PROJECTION) # if persp_enabled else glMatrixMode(GL_MODELVIEW)
     glLoadIdentity() 
-    gluPerspective(90, width / height, 0.1, 100) # First apply perspective
+    if persp_enabled:
+        gluPerspective(90, width / height, 0.1, 100)
+
     glMatrixMode(GL_MODELVIEW)
 
     glLightfv(GL_LIGHT1, GL_AMBIENT, LGT_AMB)  
@@ -62,12 +70,13 @@ def init(width, height):
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT1)
     
-
 def draw():
     # First clear the screen. 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glLoadIdentity()
-    glTranslatef(0.0, 0.0, -20.0)
+    glLoadIdentity()    
+    glTranslatef(agent_pos[0], agent_pos[1], agent_pos[2])
+    glRotatef(agent_hdng[0], 0.0, 1.0, 0.0)
+    glRotatef(agent_hdng[1], 1.0, 0.0, 0.0)
 
     # Draw the particles as a set of spheres. 
     glPushMatrix()
@@ -93,15 +102,67 @@ def idle():
             p.addParticle(.25*randn(),L,.25*randn(),0,0,0,.3*randn()+1.0)
             f(p)  # Update forces
         glutPostRedisplay()
-        
-def key(k, x, y):
-    pass
 
+# Key event handler
+#   q: exit
+#   w: pan forward
+#   a: pan left
+#   d: pan right
+#   s: pan backwards
+def key(k, x, y):
+    if ord(k) == 27:
+        exit()
+    elif k == 'w': 
+        agent_pos[2] = agent_pos[2] + 0.25
+    elif k == 's': 
+        agent_pos[2] = agent_pos[2] - 0.25
+    elif k == 'a': 
+        agent_pos[0] = agent_pos[0] - 0.25
+    elif k == 'd': 
+        agent_pos[0] = agent_pos[0] + 0.25
+    elif k == 'q':
+        agent_pos[1] = agent_pos[1] + 0.25
+    elif k == 'e':
+        agent_pos[1] = agent_pos[1] - 0.25
+    elif k == 'p':
+        a = 1
+
+# Special key event handler.
+#   up key: rotate the model about the x axis counterclockwise.
+#   down key: rotate the model about the x axis clockwise
+#   right key: rotate hte model about the y axis clockwise.
+#   left key: rotate the modle about the y axis counterclockwise
+#   <F1>: Print help to console
+#   <F2>: toggle perspective
+#   <F3>: toggle wireframe
+#   <F4>: toggle graph mode
+#   <F5>: toggle the universe boundries.
 def special(k, x, y):
-    pass
+    if k == GLUT_KEY_UP:
+        print "Rotating Down"
+        agent_hdng[1] = agent_hdng[1] - 5.0
+    elif k == GLUT_KEY_DOWN:
+        print "Rotating Up"
+        agent_hdng[1] = agent_hdng[1] + 5.0
+    elif k == GLUT_KEY_LEFT:
+        print "Rotating Left"
+        agent_hdng[0] = agent_hdng[0] + 5.0
+    elif k == GLUT_KEY_RIGHT:
+        print "Rotating Right"
+        agent_hdng[0] = agent_hdng[0] - 5.0
+    elif k == GLUT_KEY_F2:
+        persp_enabled = False if persp_enabled else True 
+        print persp_enabled
 
 def reshape(width, height):
-    pass
+    # keep the aspect ratio for the viewport
+    scrn_ratio = float(SCRN_HEIGHT) / float(SCRN_WIDTH)
+
+    if(width >= height):
+        glViewport(0, 0, int(height / scrn_ratio), int(height))
+    else:
+        glViewport(0, 0, width, int(scrn_ratio * width))
+    
 
 def visible(vis):
     pass
@@ -120,9 +181,9 @@ if __name__ == '__main__':
 
     glutDisplayFunc(draw)
     glutIdleFunc(idle)
-    # glutReshapeFunc(reshape)
-    # glutKeyboardFunc(key)
-    # glutVisibilityFunc(visible)
+    glutReshapeFunc(reshape)
+    glutKeyboardFunc(key)
+    glutSpecialFunc(special)
 
     # Hand off control to event loop
     glutMainLoop()
