@@ -12,6 +12,7 @@ import sys, time
 # Mr. Effarantix -- GL X.X, GLX X.X
 
 PAUSE = False
+FORCE_MODE = False
 
 # This program is a 'driver' for a simple simulation of partilces in a box with
 # periodic boundary conditions. Your objective will be to complete the code here
@@ -63,7 +64,7 @@ box_faces = np.array([
 FRAME = 0
 FRAME_RATE_MULTIPLIER = 6    # Increase the speed of the frames. (6 == 60fps)
 ADD_PARTICLE_INTERVAL = 10   # How often to add a new particle
-MAX_PARTICLES = 200          # When to stop adding particles.
+MAX_PARTICLES = 100          # When to stop adding particles.
 
 # Instantiate the forces function between particles
 f = GranularMaterialForce()
@@ -105,24 +106,51 @@ def draw():
     glDisable(GL_LIGHTING)
     glBegin(GL_LINES)
     glColor4f(0.0, 1.0, 0.0, 1.0) # Green
-    for edge in box_edgs:
+    for i in [0, 1, 3, 5, 9, 8, 11, 4]:
+        edge = box_edgs[i] 
         glVertex3fv((L / 2) * box_verts[edge[0]])
         glVertex3fv((L / 2) * box_verts[edge[1]])
     glEnd() 
     glEnable(GL_LIGHTING)
     glPopMatrix()
 
-    # Draw the particles as a set of spheres. 
-    glPushMatrix()
-    for i in range(p.N):
+    # Draw the particles as a set of spheres.  
+    if not FORCE_MODE:
         glPushMatrix()
-        x, y, z, r = p.x[i], p.y[i], p.z[i], p.r[i]
-        glTranslatef(float(x), float(y), float(z))
-        gluSphere(SHARED_QUAD, r, SLICES, STACKS)
-        glPopMatrix()    
-    glPopMatrix() 
+        for i in range(p.N):
+            x, y, z, r = p.x[i], p.y[i], p.z[i], p.r[i]
+            glPushMatrix() 
+            glTranslatef(float(x), float(y), float(z))
+            gluSphere(SHARED_QUAD, r, SLICES, STACKS)
+            glPopMatrix()    
+        glPopMatrix()
+    else:
+        glColor4f(1.0, 1.0, 0.0, 1.0) # Yellow
+        glDisable(GL_LIGHTING)
+        for i in range(p.N):
+            x, y, z, r = p.x[i], p.y[i], p.z[i], p.r[i]
+            glPointSize(r * 5)
+            glBegin(GL_POINTS)
+            glVertex3d(x, y, z)
+            glEnd()
 
-    # Draw the graph
+        # Now draw the forces. 
+        glColor4f(1.0, 0.0, 0.0, 1.0) # Red
+        dr = p.dr.tolist()
+        for i in range(1, len(dr)):
+            sdr = dr[i]
+            for j in range(1, len(sdr)):
+                frc = sdr[j]
+                if (i != j) and (frc > 0):
+                    glLineWidth(frc * 5)
+                    glBegin(GL_LINES)
+                    p1 = [p.x[i], p.y[i], p.z[i]]
+                    p2 = [p.x[j], p.y[j], p.z[j]]
+                    glVertex3fv(p1)
+                    glVertex3fv(p2)
+                    glEnd()
+                    glLineWidth(1.0)
+        glEnable(GL_LIGHTING)
     
     glutSwapBuffers()
 
@@ -144,6 +172,16 @@ def timer(v):
     glutPostRedisplay()
     if not PAUSE:
         glutTimerFunc(int(dt * 1000 / FRAME_RATE_MULTIPLIER), timer, 1) 
+
+    ## Calculate the connection degree of each sphere. 
+    #d = p.distanceMatrix(p.x,p.y,p.z)[0] 
+    #dr = d - triu(p.sumOfRadii) - tril(p.sumOfRadii)    # Compute overlap
+    #dr[dr>0]=0  # No forces arising in no overlap cases
+    #dr = abs(dr) 
+
+    #dr = dr.tolist()
+    
+
 
 def idle():
     glutPostRedisplay()
@@ -184,6 +222,8 @@ def key(k, x, y):
 #   <F3>: toggle wireframe
 #   <F4>: toggle graph mode
 #   <F5>: toggle the universe boundries.
+#   <F8>: toogle interaction mode.
+#       if interaction mode draw balls as points and edges as acting forces
 #   <F9>: print the frame number
 def special(k, x, y):
     if k == GLUT_KEY_UP:
@@ -216,6 +256,9 @@ def special(k, x, y):
     #    print vPort
     elif k == GLUT_KEY_F3:
         wireframe = True
+    elif k == GLUT_KEY_F8:
+        global FORCE_MODE
+        FORCE_MODE = False if FORCE_MODE else True
     elif k == GLUT_KEY_F9:
         print "FRAME: %s" % FRAME 
         # Calculate overlap areas.  
@@ -223,6 +266,8 @@ def special(k, x, y):
         d = p.distanceMatrix(p.x,p.y,p.z)[0] 
         dr = d - triu(p.sumOfRadii) - tril(p.sumOfRadii)    # Compute overlap
         dr[dr>0]=0  # No forces arising in no overlap cases
+        dr = abs(dr)
+        print dr
 
 def reshape(width, height):
     # keep the aspect ratio for the viewport

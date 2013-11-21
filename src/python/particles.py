@@ -44,6 +44,8 @@ class GranularMaterialForce:
         # No forces arising in no overlap cases
         dr[dr>0]=0
 
+        p.dr = abs(dr) # Store the forces for later use
+
         # Compute elastic particle/particle forces
         magnitude = -self.__k * dr
 
@@ -71,7 +73,7 @@ class GranularMaterialForce:
         effectiveRadius = 3. # This is how 'hard' the floor is
         floorDistance = p.y + p.L/2 - p.r
         floorDistance[floorDistance > 0] = 0
-        lowerWallForce = -self.__k * floorDistance 
+        lowerWallForce = -self.__k * floorDistance
         lowerWallDamping = -self.__gamma * p.vy * floorDistance
         lowerWallForce = lowerWallForce - lowerWallDamping
         cx = 0
@@ -138,6 +140,9 @@ class Particles:
         self.periodicZ = periodicZ 
         # Force function
         self.f = force
+
+        # Force matrix
+        self.dr = None
        
     def addParticle(self,x,y,z,vx,vy,vz,r):
         self.x = hstack((self.x,x))
@@ -192,3 +197,5 @@ class Particles:
         d[d==0] = -1
 
         return d, dx, dy, dz
+
+
