@@ -68,9 +68,11 @@ MAX_PARTICLES = 100          # When to stop adding particles.
 
 # Instantiate the forces function between particles
 f = GranularMaterialForce()
+f.__fcdt = dt # step taken by floor motion
 # Create some particles and a box
-p = Particles(L,f,periodicY=0)
-particleInitialize(p,'one',L)
+p = Particles(L,f,periodicY=0) # keeps the simulator from crashing.
+p.add_mode = 'step'
+#particleInitialize(p,'one',L)
 # Instantiate Integrator
 integrate = VerletIntegrator(dt)
 
@@ -158,30 +160,19 @@ def mouse(button, state, x, y):
     pass
 
 # Force the simulation to update at a constant rate. 
-# not properly implemented 
-#   FIXME dt is not being properly used
-# to upate the simulation relative to time. 
 def timer(v):
     integrate(f, p)
     
     global FRAME
     FRAME = FRAME + 1
     if mod(FRAME, ADD_PARTICLE_INTERVAL) == 0 and p.N < MAX_PARTICLES: 
-        p.addParticle( 0.25 * randn(), L, 0.25 * randn(), 0, 0, 0, 0.3 * randn() + 1.0)
+        #p.addParticle( 0.25 * randn(), L, 0.25 * randn(), 0, 0, 0, 0.3 * randn() + 1.0)
+        p.add()
 
     glutPostRedisplay()
     if not PAUSE:
-        glutTimerFunc(int(dt * 1000 / FRAME_RATE_MULTIPLIER), timer, 1) 
-
-    ## Calculate the connection degree of each sphere. 
-    #d = p.distanceMatrix(p.x,p.y,p.z)[0] 
-    #dr = d - triu(p.sumOfRadii) - tril(p.sumOfRadii)    # Compute overlap
-    #dr[dr>0]=0  # No forces arising in no overlap cases
-    #dr = abs(dr) 
-
-    #dr = dr.tolist()
+        glutTimerFunc(int(dt * 1000 / FRAME_RATE_MULTIPLIER), timer, 1)
     
-
 
 def idle():
     glutPostRedisplay()
@@ -193,7 +184,12 @@ def idle():
 #   d: pan right
 #   s: pan backwards
 #   p: pause simulation
+#   = or +: speed up the simulation
+#   - or _: slow down the simulation
 def key(k, x, y):
+    global FRAME_RATE_MULTIPLIER
+    global PAUSE
+    global f
     if ord(k) == 27:
         exit()
     elif k == 'w': 
@@ -209,9 +205,18 @@ def key(k, x, y):
     elif k == 'e':
         agent_pos[1] = agent_pos[1] - 0.25
     elif k == 'p':
-        global PAUSE
         PAUSE = True if not PAUSE else False
         glutTimerFunc(10, timer, FRAME)
+    elif k == '=' or k == '+':
+        FRAME_RATE_MULTIPLIER = FRAME_RATE_MULTIPLIER + 1
+        print "Frame Rate: %s" % FRAME_RATE_MULTIPLIER
+    elif k == '-' or k == '_':
+        if FRAME_RATE_MULTIPLIER > 1:
+            FRAME_RATE_MULTIPLIER = FRAME_RATE_MULTIPLIER - 1
+        print "Frame Rate: %s" % FRAME_RATE_MULTIPLIER
+    elif k == 'v': # enable disable floor vibration
+        f.vibrate_floor = True if not f.vibrate_floor else False
+
 
 # Special key event handler.
 #   up key: rotate the model about the x axis counterclockwise.

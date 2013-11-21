@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 from numpy import * 
-from pylab import rand
+from pylab import rand, randn
+from particleInitialize import *
 
 # print "Inside of particles.py"
 
@@ -33,6 +34,9 @@ class GranularMaterialForce:
         self.__k = k          # Elastic 'bounce'
         self.__gamma = gamma  # Energy dissipation/loss
         self.__g = g          # Gravity
+        self.__fcds = 0       # Starting position difference of the floor
+        self.__fcdt = 0.1     # Time step 
+        self.vibrate_floor = False
 
     def __call__(self, p):
         # Find position differences
@@ -71,7 +75,11 @@ class GranularMaterialForce:
     def floorConstraint(self,p):
         " "" This is a highly specific function for a floor that responds (elasticity and damping) the same way a particle does. Presently, if constraints are to change, one would have to rewrite the function."" "
         effectiveRadius = 3. # This is how 'hard' the floor is
-        floorDistance = p.y + p.L/2 - p.r
+        if self.vibrate_floor:
+            floorDistance = p.y + p.L/2 - p.r + sin(self.__fcds) # a the 'vibration' to the floor
+        else:
+            floorDistance = p.y + p.L/2 - p.r 
+
         floorDistance[floorDistance > 0] = 0
         lowerWallForce = -self.__k * floorDistance
         lowerWallDamping = -self.__gamma * p.vy * floorDistance
@@ -79,6 +87,10 @@ class GranularMaterialForce:
         cx = 0
         cy = lowerWallForce * effectiveRadius / p.r
         cz = 0
+        
+        # Update the floor postition.
+        self.__fcds = self.__fcds + (self.__fcdt * pi / 2)
+
         return cx, cy, cz
 
 class VerletIntegrator:
@@ -88,8 +100,6 @@ class VerletIntegrator:
         self.__dt = dt
 
     def __call__(self,force,p):
-
-
         # Position update
         p.x = p.x + p.vx * self.__dt + .5 * p.ax * self.__dt ** 2
         p.y = p.y + p.vy * self.__dt + .5 * p.ay * self.__dt ** 2
@@ -143,6 +153,57 @@ class Particles:
 
         # Force matrix
         self.dr = None
+
+        # Add particle mode settings
+        self.add_mode = 'random' # random, step, rstep, binary
+        self.min_radius = 1.0
+        self.max_radius = 10.0
+        self.max_particles = 100
+        self.steps = 10
+  
+        particleInitialize(self,'one', self.L) # initizialize with a single particle
+    
+    # Resets everything and changes the add mode. 
+    def change_add_mode(self, mode):
+        # Total number of particles 
+        self.N = 0 
+        # Positions
+        self.x = array([],dtype=self.type)
+        self.y = array([],dtype=self.type)
+        self.z = array([],dtype=self.type)
+        # Velocities
+        self.vx = array([],dtype=self.type)
+        self.vy = array([],dtype=self.type)
+        self.vz = array([],dtype=self.type)
+        # Forces
+        self.ax = array([],dtype=self.type)
+        self.ay = array([],dtype=self.type)
+        self.az = array([],dtype=self.type)
+        # Radii
+        self.r = array([],dtype=self.type)
+        # Mode
+        self.add_mode = mode
+        
+        particleInitialize(self, 'one', self.L)
+        
+
+    def add(self):
+        if self.add_mode == 'random':
+            self.addParticle(0.25 * randn(), self.L, 0.25 * randn(), 0, 0, 0, 0.3 * randn() + 1.0)
+        elif self.add_mode == 'step':
+            d_radius = self.max_radius - self.min_radius
+            d_step = d_radius / self.steps
+            radius = floor(d_step * self.N) + self.min_radius
+            self.addParticle(0.25 * randn(), self.L, 0.25 * randn(), 0, 0, 0, radius)
+            print 'D Step: %f' % d_step
+            print 'N: %s' % self.N
+            print 'step particle: %s' % radius
+        elif self.add_mode == 'rstep':
+            print 'reverse step particle'
+        elif self.add_mode == 'binary':
+            print 'binary particle'
+        else:
+            print 'Uncaught Mode'
        
     def addParticle(self,x,y,z,vx,vy,vz,r):
         self.x = hstack((self.x,x))
