@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from particles import *
 from pylab import *
 from particleInitialize import *
@@ -15,6 +17,8 @@ PAUSE = False
 # periodic boundary conditions. Your objective will be to complete the code here
 # so that you can 'see' the particles with OpenGL.
 SHARED_QUAD = gluNewQuadric()
+SLICES = 25
+STACKS = 25
 SCRN_WIDTH = 800.0
 SCRN_HEIGHT = 640.0
 
@@ -30,22 +34,36 @@ agent_hdng = [0.0, 0.0] # The orientation of the viewer as (yaw, pitch)
 # OpenGL Parameters
 persp_enabled = True;
 
-tStart = t0 = time.time()
-
+# Simulation Parameters
 dt = 0.1   # Time step taken by the time integration routine. (Also the frame rate)
 L = 10.0    # Size of the box.
 t = 0      # Initial time
+
+# Useful arrays to draw cubes
+box_verts = np.array([
+        [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+        [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+        ])
+box_edgs = np.array([
+        [0, 1], [1, 2], [2, 3], [3, 0], 
+        [0, 4], [1, 5], [2, 6], [3, 7],
+        [4, 5], [5, 6], [6, 7], [7, 4]
+        ])
+box_faces = np.array([
+        [0, 1, 2, 3],
+        [1, 5, 6, 2],
+        [3, 2, 6, 7],
+        [0, 3, 7, 4],
+        [1, 5, 4, 0],
+        [5, 6, 7, 4]
+        ])
 
 
 # Particle Update Data:
 FRAME = 0
 FRAME_RATE_MULTIPLIER = 6    # Increase the speed of the frames. (6 == 60fps)
 ADD_PARTICLE_INTERVAL = 10   # How often to add a new particle
-MAX_PARTICLES = 12          # When to stop adding particles. 
-
-# How resolved are the spheres?
-STACKS = 25
-SLICES = 25
+MAX_PARTICLES = 200          # When to stop adding particles.
 
 # Instantiate the forces function between particles
 f = GranularMaterialForce()
@@ -63,12 +81,11 @@ def init(width, height):
     glShadeModel(GL_SMOOTH)
     glMatrixMode(GL_PROJECTION) # if persp_enabled else glMatrixMode(GL_MODELVIEW)
     glLoadIdentity() 
-    if persp_enabled:
-        gluPerspective(90, width / height, 0.1, 100)
+    gluPerspective(90, width / height, 0.1, 100)
 
     glMatrixMode(GL_MODELVIEW)
 
-    glLightfv(GL_LIGHT1, GL_AMBIENT, LGT_AMB)  
+    glLightfv(GL_LIGHT1, GL_AMBIENT, LGT_AMB) 
     glLightfv(GL_LIGHT1, GL_DIFFUSE, LGT_DIFF)
     glLightfv(GL_LIGHT1, GL_POSITION, LGT_POS)
     glEnable(GL_LIGHTING)
@@ -77,10 +94,23 @@ def init(width, height):
 def draw():
     # First clear the screen. 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glLoadIdentity()    
+    glLoadIdentity() 
+
     glTranslatef(agent_pos[0], agent_pos[1], agent_pos[2])
     glRotatef(agent_hdng[0], 0.0, 1.0, 0.0)
     glRotatef(agent_hdng[1], 1.0, 0.0, 0.0)
+
+    # Draw the universe boundries
+    glPushMatrix()
+    glDisable(GL_LIGHTING)
+    glBegin(GL_LINES)
+    glColor4f(0.0, 1.0, 0.0, 1.0) # Green
+    for edge in box_edgs:
+        glVertex3fv((L / 2) * box_verts[edge[0]])
+        glVertex3fv((L / 2) * box_verts[edge[1]])
+    glEnd() 
+    glEnable(GL_LIGHTING)
+    glPopMatrix()
 
     # Draw the particles as a set of spheres. 
     glPushMatrix()
@@ -92,7 +122,12 @@ def draw():
         glPopMatrix()    
     glPopMatrix() 
 
+    # Draw the graph
+    
     glutSwapBuffers()
+
+def mouse(button, state, x, y):
+    pass
 
 # Force the simulation to update at a constant rate. 
 # not properly implemented 
@@ -105,20 +140,6 @@ def timer(v):
     FRAME = FRAME + 1
     if mod(FRAME, ADD_PARTICLE_INTERVAL) == 0 and p.N < MAX_PARTICLES: 
         p.addParticle( 0.25 * randn(), L, 0.25 * randn(), 0, 0, 0, 0.3 * randn() + 1.0)
-
-    # Calculate overlap areas.  
-    # Find position differences
-    d = p.distanceMatrix(p.x,p.y,p.z)[0]
-    
-    # Compute overlap
-    dr = d - triu(p.sumOfRadii) - tril(p.sumOfRadii)        
-
-    # No forces arising in no overlap cases
-    dr[dr>0]=0
-    dr[dr<0]=1
-
-    if FRAME == 1600:
-        print dr
 
     glutPostRedisplay()
     if not PAUSE:
@@ -160,10 +181,10 @@ def key(k, x, y):
 #   right key: rotate hte model about the y axis clockwise.
 #   left key: rotate the modle about the y axis counterclockwise
 #   <F1>: Print help to console
-#   <F2>: toggle perspective
 #   <F3>: toggle wireframe
 #   <F4>: toggle graph mode
 #   <F5>: toggle the universe boundries.
+#   <F9>: print the frame number
 def special(k, x, y):
     if k == GLUT_KEY_UP:
         # print "Rotating Down"
@@ -177,11 +198,31 @@ def special(k, x, y):
     elif k == GLUT_KEY_RIGHT:
         # print "Rotating Right"
         agent_hdng[0] = agent_hdng[0] + 5.0
-    elif k == GLUT_KEY_F2:
-        persp_enabled = False if persp_enabled else True 
-        print persp_enabled
+    #elif k == GLUT_KEY_F2:
+    #    vPort = glGetIntegerv(GL_VIEWPORT)
+    #    global persp_enabled
+    #    if persp_enabled:
+    #        persp_enabled = False
+    #        glMatrixMode(GL_PROJECTION)
+    #        glLoadIdentity()
+    #        gluPerspective(90, vPort[2] / vPort[3], 0.1, 100)     
+    #        glMatrixMode(GL_MODELVIEW)
+    #    else:
+    #        perp_enabled = True
+    #        glMatrixMode(GL_PROJECTION)
+    #        glLoadIdentity()
+    #        glOrtho(0, vPort[2], 0, vPort[3], 0, 100)     
+    #        glMatrixMode(GL_MODELVIEW)
+    #    print vPort
+    elif k == GLUT_KEY_F3:
+        wireframe = True
     elif k == GLUT_KEY_F9:
-        print "FRAME: %s" % FRAME
+        print "FRAME: %s" % FRAME 
+        # Calculate overlap areas.  
+        # Find position differences
+        d = p.distanceMatrix(p.x,p.y,p.z)[0] 
+        dr = d - triu(p.sumOfRadii) - tril(p.sumOfRadii)    # Compute overlap
+        dr[dr>0]=0  # No forces arising in no overlap cases
 
 def reshape(width, height):
     # keep the aspect ratio for the viewport
@@ -213,10 +254,13 @@ if __name__ == '__main__':
     glutReshapeFunc(reshape)
     glutKeyboardFunc(key)
     glutSpecialFunc(special)
-
+    glutMouseFunc(mouse)
+    
+    # Start the timer.
     glutTimerFunc(10, timer, FRAME)
 
     # Hand off control to event loop
     glutMainLoop()
+
 
 
