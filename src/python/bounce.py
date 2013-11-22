@@ -9,16 +9,19 @@ from OpenGL.GLU import *
 from collections import defaultdict
 import sys, time
 import csv
+import datetime
 
 # BOB -- GL 2.1, GLX 1.4
 # Mr. Effarantix -- GL X.X, GLX X.X
 
 # Files to write to
 RECORD = False
+RECORD_TO_FILE = True
+MODE = 1 # Corresponds to keys 0 to disable
 CSV_DEG_FILE = ""
 CSV_HEIGHT_FILE = ""
 CSV_BALLS_FILE = ""
-
+DATE = str(datetime.date.today())
 
 PAUSE = False
 FORCE_MODE = False
@@ -78,13 +81,11 @@ FRAME = 0
 FRAME_RATE_MULTIPLIER = 6   # Increase the speed of the frames. (6 == 60fps)
 SAMPLE = 0                  # Sample counter
 SAMPLE_INTERVAL = 20        # Sample the system once every 20 frames
-SAMPLE_BEGIN_VIBRATION = 200# Start vibrating at 200
-SAMPLE_END_VIBRATION = 300  # Stop vibrating at 300
-MAX_SAMPLES = 400           # The maximum number of samples
+SAMPLE_BEGIN_VIBRATION = 200 # Start vibrating at             200
+SAMPLE_END_VIBRATION = 300   # Stop vibrating at              300
+MAX_SAMPLES = 400            # The maximum number of samples: 400
 ADD_PARTICLE_INTERVAL = 10  # How often to add a new particle
-MAX_PARTICLES = 200         # When to stop adding particles.
-
-MODE = 1 # Corresponds to keys
+MAX_PARTICLES = 200         # When to stop adding particles: 200
 
 # Instantiate the forces function between particles
 f = GranularMaterialForce()
@@ -160,9 +161,9 @@ def draw():
         # Now draw the forces. 
         glColor4f(1.0, 0.0, 0.0, 1.0) # Red
         dr = p.dr.tolist()
-        for i in range(0, len(dr) - 1):
+        for i in range(0, len(dr)):
             sdr = dr[i]
-            for j in range(0, len(sdr) - 1):
+            for j in range(0, len(sdr)):
                 frc = sdr[j]
                 if (i != j) and (frc > 0):
                     glLineWidth(frc * 5)
@@ -200,9 +201,9 @@ def timer(v):
         # Calcuate the  degree of each sphere. 
         dr = p.dr.tolist() 
         deg = [0] * p.max_particles
-        for i in range(0, len(dr) - 1):
+        for i in range(0, len(dr)):
             sdr = dr[i]
-            for j in range(0, len(sdr) - 1):
+            for j in range(0, len(sdr)):
                 frc = sdr[j]
                 if (i != j) and (frc > 0):
                     deg[i] = deg[i] + 1
@@ -244,7 +245,7 @@ def timer(v):
         #print CSV_BALLS_FILE
         new_csv(CSV_BALLS_FILE, colnames)
         append_csv(CSV_BALLS_FILE, pr)
-    elif not RECORD and SAMPLE == MAX_SAMPLES and MODE <= 3:
+    elif not RECORD and SAMPLE == MAX_SAMPLES and MODE <= 3 and MODE > 0:
         MODE = MODE + 1
         print "MODE: %d" % MODE
         RECORD = True
@@ -305,58 +306,58 @@ def key(k, x, y):
     elif k == '1':
         RECORD = True
         csv_file = '../../data/random' 
-        CSV_DEG_FILE = csv_file + '_deg.csv'
-        CSV_HEIGHT_FILE = csv_file + '_heights.csv'
-        CSV_BALLS_FILE = csv_file + '_balls.csv'
+        CSV_DEG_FILE = csv_file + '_deg_' + DATE + '.csv'
+        CSV_HEIGHT_FILE = csv_file + '_heights_' + DATE + '.csv'
+        CSV_BALLS_FILE = csv_file + '_balls_' + DATE + '.csv'
         p.change_add_mode('random')
 
-        colnames = range(0, p.max_particles - 1)
-        new_csv(CSV_HEIGHT_FILE, colnames)
+        colnames = range(0, p.max_particles)
         colnames.append('state')
         colnames.append('mode')
         colnames.append('isVibrating')
+        new_csv(CSV_HEIGHT_FILE, colnames)
         new_csv(CSV_DEG_FILE, colnames)
     elif k == '2':
         RECORD = True
         csv_file = '../../data/step' 
-        CSV_DEG_FILE = csv_file + '_deg.csv'
-        CSV_HEIGHT_FILE = csv_file + '_heights.csv'
-        CSV_BALLS_FILE = csv_file + '_balls.csv'
+        CSV_DEG_FILE = csv_file + '_deg_' + DATE + '.csv'
+        CSV_HEIGHT_FILE = csv_file + '_heights_' + DATE + '.csv'
+        CSV_BALLS_FILE = csv_file + '_balls_' + DATE + '.csv'
         p.change_add_mode('step')
 
-        colnames = range(0, p.max_particles - 1)
-        new_csv(CSV_HEIGHT_FILE, colnames)
+        colnames = range(0, p.max_particles)
         colnames.append('state')
         colnames.append('mode')
         colnames.append('isVibrating')
+        new_csv(CSV_HEIGHT_FILE, colnames)
         new_csv(CSV_DEG_FILE, colnames)
     elif k == '3':
         RECORD = True
         csv_file = '../../data/rstep' 
-        CSV_DEG_FILE = csv_file + '_deg.csv'
-        CSV_HEIGHT_FILE = csv_file + '_heights.csv'
-        CSV_BALLS_FILE = csv_file + '_balls.csv'
+        CSV_DEG_FILE = csv_file + '_deg_' + DATE + '.csv'
+        CSV_HEIGHT_FILE = csv_file + '_heights_' + DATE + '.csv'
+        CSV_BALLS_FILE = csv_file + '_balls_' + DATE + '.csv'
         p.change_add_mode('rstep')
 
-        colnames = range(0, p.max_particles - 1)
-        new_csv(CSV_HEIGHT_FILE, colnames)
+        colnames = range(0, p.max_particles)
         colnames.append('state')
         colnames.append('mode')
         colnames.append('isVibrating')
+        new_csv(CSV_HEIGHT_FILE, colnames)
         new_csv(CSV_DEG_FILE, colnames)
     elif k == '4':
         RECORD = True
         csv_file = '../../data/binary' 
-        CSV_DEG_FILE = csv_file + '_deg.csv'
-        CSV_HEIGHT_FILE = csv_file + '_heights.csv'
-        CSV_BALLS_FILE = csv_file + '_balls.csv'
+        CSV_DEG_FILE = csv_file + '_deg_' + DATE + '.csv'
+        CSV_HEIGHT_FILE = csv_file + '_heights_' + DATE + '.csv'
+        CSV_BALLS_FILE = csv_file + '_balls_' + DATE + '.csv'
         p.change_add_mode('binary')
         
-        colnames = range(0, p.max_particles - 1)
-        new_csv(CSV_HEIGHT_FILE, colnames)
+        colnames = range(0, p.max_particles)
         colnames.append('state')
         colnames.append('mode')
         colnames.append('isVibrating')
+        new_csv(CSV_HEIGHT_FILE, colnames)
         new_csv(CSV_DEG_FILE, colnames)
 
 
@@ -430,14 +431,16 @@ def visible(vis):
     pass
 
 def new_csv(path, colnames):
-    csvfile = open(path, 'wb')
-    csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    csvwriter.writerow(colnames)
+    if RECORD_TO_FILE:
+        csvfile = open(path, 'wb')
+        csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow(colnames)
 
 def append_csv(path, row):
-    csvfile = open(path, 'a')
-    csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    csvwriter.writerow(row)
+    if RECORD_TO_FILE:
+        csvfile = open(path, 'a')
+        csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow(row)
 
    
 if __name__ == '__main__':
