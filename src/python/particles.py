@@ -76,7 +76,7 @@ class GranularMaterialForce:
         " "" This is a highly specific function for a floor that responds (elasticity and damping) the same way a particle does. Presently, if constraints are to change, one would have to rewrite the function."" "
         effectiveRadius = 3. # This is how 'hard' the floor is
         if self.vibrate_floor:
-            floorDistance = p.y + p.L/2 - p.r + sin(self.__fcds) # a the 'vibration' to the floor
+            floorDistance = p.y + p.L/2 - p.r + sin(self.__fcds + (randn()/2)) # a the 'vibration' to the floor
         else:
             floorDistance = p.y + p.L/2 - p.r 
 

@@ -46,7 +46,7 @@ persp_enabled = True;
 
 # Simulation Parameters
 dt = 0.1   # Time step taken by the time integration routine. (Also the frame rate)
-L = 20.0    # Size of the box.
+L = 15.0    # Size of the box.
 t = 0      # Initial time
 
 # Agent Parameters
@@ -83,6 +83,8 @@ SAMPLE_END_VIBRATION = 300  # Stop vibrating at 300
 MAX_SAMPLES = 400           # The maximum number of samples
 ADD_PARTICLE_INTERVAL = 10  # How often to add a new particle
 MAX_PARTICLES = 200         # When to stop adding particles.
+
+MODE = 1 # Corresponds to keys
 
 # Instantiate the forces function between particles
 f = GranularMaterialForce()
@@ -193,6 +195,7 @@ def timer(v):
     # Sampeling interval 
     global SAMPLE
     global RECORD
+    global MODE
     if (FRAME % SAMPLE_INTERVAL == 0) and RECORD and SAMPLE < MAX_SAMPLES:
         # Calcuate the  degree of each sphere. 
         dr = p.dr.tolist() 
@@ -213,15 +216,19 @@ def timer(v):
             state = 'seeded'
             mode = p.add_mode
             vibrating = f.vibrate_floor
-
-        deg.append(state)
-        deg.append(mode)
-        deg.append(vibrating)
         
-        append_csv(CSV_DEG_FILE, deg)
+        pz = p.z.tolist()
+        for i in range(len(pz), p.max_particles):
+            pz.append(0)
 
-        # Now get the heights of the balls. 
-        pz = p.z
+        pz.append(state)
+        deg.append(state)
+        pz.append(mode)
+        deg.append(mode)
+        pz.append(vibrating)
+        deg.append(vibrating) 
+        append_csv(CSV_DEG_FILE, deg)
+        append_csv(CSV_HEIGHT_FILE, pz)
 
         if SAMPLE == SAMPLE_BEGIN_VIBRATION:
             f.vibrate_floor = True
@@ -234,12 +241,15 @@ def timer(v):
         # write ball radii to a file
         colnames = range(0, p.max_particles - 1)
         pr = p.r
-        write_csv(CSV_BALLS_FILE, colnames)
+        #print CSV_BALLS_FILE
+        new_csv(CSV_BALLS_FILE, colnames)
         append_csv(CSV_BALLS_FILE, pr)
-    elif not RECORD and SAMPLE == MAX_SAMPLES:
-        print "Done Seeding"
-        print "Particles %d" % p.N
-        SAMPLE = SAMPLE + 1
+    elif not RECORD and SAMPLE == MAX_SAMPLES and MODE <= 3:
+        MODE = MODE + 1
+        print "MODE: %d" % MODE
+        RECORD = True
+        SAMPLE = 0
+        key(str(MODE), 0, 0)
 
     glutPostRedisplay()
     if not PAUSE:
@@ -265,6 +275,7 @@ def key(k, x, y):
     global RECORD
     global CSV_DEG_FILE
     global CSV_HEIGHT_FILE
+    global CSV_BALLS_FILE
     if ord(k) == 27:
         exit()
     elif k == 'w': 
