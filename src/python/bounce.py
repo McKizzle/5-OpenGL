@@ -6,10 +6,19 @@ from particleInitialize import *
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
+from collections import defaultdict
 import sys, time
+import csv
 
 # BOB -- GL 2.1, GLX 1.4
 # Mr. Effarantix -- GL X.X, GLX X.X
+
+# Files to write to
+RECORD = False
+CSV_DEG_FILE = ""
+CSV_HEIGHT_FILE = ""
+CSV_BALLS_FILE = ""
+
 
 PAUSE = False
 FORCE_MODE = False
@@ -29,7 +38,7 @@ LGT_DIFF = [1.0, 1.0, 1.0, 1.0]
 LGT_POS = [20, 20, 20]
 
 # Agent Parameters
-agent_pos  = [0.0, 0.0, -20.0] # The position of the viewer as (x, y, z)
+agent_pos  = [0.0, 0.0, 0.0] # The position of the viewer as (x, y, z)
 agent_hdng = [0.0, 0.0] # The orientation of the viewer as (yaw, pitch)
 
 # OpenGL Parameters
@@ -37,8 +46,12 @@ persp_enabled = True;
 
 # Simulation Parameters
 dt = 0.1   # Time step taken by the time integration routine. (Also the frame rate)
-L = 10.0    # Size of the box.
+L = 20.0    # Size of the box.
 t = 0      # Initial time
+
+# Agent Parameters
+agent_pos  = [0.0, 0.0, -L * 2] # The position of the viewer as (x, y, z)
+agent_hdng = [0.0, 0.0] # The orientation of the viewer as (yaw, pitch)
 
 # Useful arrays to draw cubes
 box_verts = np.array([
@@ -62,16 +75,22 @@ box_faces = np.array([
 
 # Particle Update Data:
 FRAME = 0
-FRAME_RATE_MULTIPLIER = 6    # Increase the speed of the frames. (6 == 60fps)
-ADD_PARTICLE_INTERVAL = 10   # How often to add a new particle
-MAX_PARTICLES = 100          # When to stop adding particles.
+FRAME_RATE_MULTIPLIER = 6   # Increase the speed of the frames. (6 == 60fps)
+SAMPLE = 0                  # Sample counter
+SAMPLE_INTERVAL = 20        # Sample the system once every 20 frames
+SAMPLE_BEGIN_VIBRATION = 200# Start vibrating at 200
+SAMPLE_END_VIBRATION = 300  # Stop vibrating at 300
+MAX_SAMPLES = 400           # The maximum number of samples
+ADD_PARTICLE_INTERVAL = 10  # How often to add a new particle
+MAX_PARTICLES = 200         # When to stop adding particles.
 
 # Instantiate the forces function between particles
 f = GranularMaterialForce()
 f.__fcdt = dt # step taken by floor motion
 # Create some particles and a box
 p = Particles(L,f,periodicY=0) # keeps the simulator from crashing.
-p.add_mode = 'step'
+p.add_mode = 'binary'
+p.max_particles = MAX_PARTICLES
 #particleInitialize(p,'one',L)
 # Instantiate Integrator
 integrate = VerletIntegrator(dt)
@@ -139,9 +158,9 @@ def draw():
         # Now draw the forces. 
         glColor4f(1.0, 0.0, 0.0, 1.0) # Red
         dr = p.dr.tolist()
-        for i in range(1, len(dr)):
+        for i in range(0, len(dr) - 1):
             sdr = dr[i]
-            for j in range(1, len(sdr)):
+            for j in range(0, len(sdr) - 1):
                 frc = sdr[j]
                 if (i != j) and (frc > 0):
                     glLineWidth(frc * 5)
@@ -162,12 +181,65 @@ def mouse(button, state, x, y):
 # Force the simulation to update at a constant rate. 
 def timer(v):
     integrate(f, p)
+
+    #print "Particles: %d" % p.N
     
     global FRAME
     FRAME = FRAME + 1
     if mod(FRAME, ADD_PARTICLE_INTERVAL) == 0 and p.N < MAX_PARTICLES: 
         #p.addParticle( 0.25 * randn(), L, 0.25 * randn(), 0, 0, 0, 0.3 * randn() + 1.0)
-        p.add()
+        p.add() 
+    
+    # Sampeling interval 
+    global SAMPLE
+    global RECORD
+    if (FRAME % SAMPLE_INTERVAL == 0) and RECORD and SAMPLE < MAX_SAMPLES:
+        # Calcuate the  degree of each sphere. 
+        dr = p.dr.tolist() 
+        deg = [0] * p.max_particles
+        for i in range(0, len(dr) - 1):
+            sdr = dr[i]
+            for j in range(0, len(sdr) - 1):
+                frc = sdr[j]
+                if (i != j) and (frc > 0):
+                    deg[i] = deg[i] + 1
+
+        # Determine the mode.
+        if p.N < MAX_PARTICLES:
+            state = 'seeding'
+            mode = p.add_mode
+            vibrating = f.vibrate_floor
+        else:
+            state = 'seeded'
+            mode = p.add_mode
+            vibrating = f.vibrate_floor
+
+        deg.append(state)
+        deg.append(mode)
+        deg.append(vibrating)
+        
+        append_csv(CSV_DEG_FILE, deg)
+
+        # Now get the heights of the balls. 
+        pz = p.z
+
+        if SAMPLE == SAMPLE_BEGIN_VIBRATION:
+            f.vibrate_floor = True
+        if SAMPLE == SAMPLE_END_VIBRATION:
+            f.vibrate_floor = False
+
+        SAMPLE = SAMPLE + 1
+    elif SAMPLE == MAX_SAMPLES and RECORD:
+        RECORD = False
+        # write ball radii to a file
+        colnames = range(0, p.max_particles - 1)
+        pr = p.r
+        write_csv(CSV_BALLS_FILE, colnames)
+        append_csv(CSV_BALLS_FILE, pr)
+    elif not RECORD and SAMPLE == MAX_SAMPLES:
+        print "Done Seeding"
+        print "Particles %d" % p.N
+        SAMPLE = SAMPLE + 1
 
     glutPostRedisplay()
     if not PAUSE:
@@ -190,6 +262,9 @@ def key(k, x, y):
     global FRAME_RATE_MULTIPLIER
     global PAUSE
     global f
+    global RECORD
+    global CSV_DEG_FILE
+    global CSV_HEIGHT_FILE
     if ord(k) == 27:
         exit()
     elif k == 'w': 
@@ -216,6 +291,62 @@ def key(k, x, y):
         print "Frame Rate: %s" % FRAME_RATE_MULTIPLIER
     elif k == 'v': # enable disable floor vibration
         f.vibrate_floor = True if not f.vibrate_floor else False
+    elif k == '1':
+        RECORD = True
+        csv_file = '../../data/random' 
+        CSV_DEG_FILE = csv_file + '_deg.csv'
+        CSV_HEIGHT_FILE = csv_file + '_heights.csv'
+        CSV_BALLS_FILE = csv_file + '_balls.csv'
+        p.change_add_mode('random')
+
+        colnames = range(0, p.max_particles - 1)
+        new_csv(CSV_HEIGHT_FILE, colnames)
+        colnames.append('state')
+        colnames.append('mode')
+        colnames.append('isVibrating')
+        new_csv(CSV_DEG_FILE, colnames)
+    elif k == '2':
+        RECORD = True
+        csv_file = '../../data/step' 
+        CSV_DEG_FILE = csv_file + '_deg.csv'
+        CSV_HEIGHT_FILE = csv_file + '_heights.csv'
+        CSV_BALLS_FILE = csv_file + '_balls.csv'
+        p.change_add_mode('step')
+
+        colnames = range(0, p.max_particles - 1)
+        new_csv(CSV_HEIGHT_FILE, colnames)
+        colnames.append('state')
+        colnames.append('mode')
+        colnames.append('isVibrating')
+        new_csv(CSV_DEG_FILE, colnames)
+    elif k == '3':
+        RECORD = True
+        csv_file = '../../data/rstep' 
+        CSV_DEG_FILE = csv_file + '_deg.csv'
+        CSV_HEIGHT_FILE = csv_file + '_heights.csv'
+        CSV_BALLS_FILE = csv_file + '_balls.csv'
+        p.change_add_mode('rstep')
+
+        colnames = range(0, p.max_particles - 1)
+        new_csv(CSV_HEIGHT_FILE, colnames)
+        colnames.append('state')
+        colnames.append('mode')
+        colnames.append('isVibrating')
+        new_csv(CSV_DEG_FILE, colnames)
+    elif k == '4':
+        RECORD = True
+        csv_file = '../../data/binary' 
+        CSV_DEG_FILE = csv_file + '_deg.csv'
+        CSV_HEIGHT_FILE = csv_file + '_heights.csv'
+        CSV_BALLS_FILE = csv_file + '_balls.csv'
+        p.change_add_mode('binary')
+        
+        colnames = range(0, p.max_particles - 1)
+        new_csv(CSV_HEIGHT_FILE, colnames)
+        colnames.append('state')
+        colnames.append('mode')
+        colnames.append('isVibrating')
+        new_csv(CSV_DEG_FILE, colnames)
 
 
 # Special key event handler.
@@ -286,6 +417,17 @@ def reshape(width, height):
 
 def visible(vis):
     pass
+
+def new_csv(path, colnames):
+    csvfile = open(path, 'wb')
+    csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    csvwriter.writerow(colnames)
+
+def append_csv(path, row):
+    csvfile = open(path, 'a')
+    csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    csvwriter.writerow(row)
+
    
 if __name__ == '__main__':
 
@@ -311,6 +453,7 @@ if __name__ == '__main__':
 
     # Hand off control to event loop
     glutMainLoop()
+
 
 
 

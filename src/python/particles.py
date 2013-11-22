@@ -157,8 +157,8 @@ class Particles:
         # Add particle mode settings
         self.add_mode = 'random' # random, step, rstep, binary
         self.min_radius = 1.0
-        self.max_radius = 10.0
-        self.max_particles = 100
+        self.max_radius = 2.0
+        self.max_particles = 10
         self.steps = 10
   
         particleInitialize(self,'one', self.L) # initizialize with a single particle
@@ -189,19 +189,24 @@ class Particles:
 
     def add(self):
         if self.add_mode == 'random':
-            self.addParticle(0.25 * randn(), self.L, 0.25 * randn(), 0, 0, 0, 0.3 * randn() + 1.0)
+            self.addParticle(0.25 * randn(), self.L, 0.25 * randn(), 0, 0, 0, 0.3 * randn() + 1.01)
         elif self.add_mode == 'step':
-            d_radius = self.max_radius - self.min_radius
-            d_step = d_radius / self.steps
-            radius = floor(d_step * self.N) + self.min_radius
+            rrange = self.max_radius - self.min_radius
+            dt_rrange = rrange / self.steps
+            curr_step = float(int(self.N / (self.max_particles / self.steps)))
+            radius = curr_step * dt_rrange + self.min_radius
             self.addParticle(0.25 * randn(), self.L, 0.25 * randn(), 0, 0, 0, radius)
-            print 'D Step: %f' % d_step
-            print 'N: %s' % self.N
-            print 'step particle: %s' % radius
         elif self.add_mode == 'rstep':
-            print 'reverse step particle'
+            rrange = self.max_radius - self.min_radius
+            dt_rrange = rrange / self.steps
+            curr_step = float(int(self.N / (self.max_particles / self.steps)))
+            radius = self.max_radius - curr_step * dt_rrange 
+            self.addParticle(0.25 * randn(), self.L, 0.25 * randn(), 0, 0, 0, radius)
         elif self.add_mode == 'binary':
-            print 'binary particle'
+            if self.N % 2 == 0:
+                self.addParticle(0.25 * randn(), self.L, 0.25 * randn(), 0, 0, 0, float(self.max_radius))
+            else:
+                self.addParticle(0.25 * randn(), self.L, 0.25 * randn(), 0, 0, 0, float(self.min_radius))
         else:
             print 'Uncaught Mode'
        
