@@ -21,10 +21,11 @@ MODE = 1 # Corresponds to keys 0 to disable
 CSV_DEG_FILE = ""
 CSV_HEIGHT_FILE = ""
 CSV_BALLS_FILE = ""
-DATE = str(datetime.date.today())
+DATE = str(datetime.date.today()) + "_NEW_"
 
 PAUSE = False
 FORCE_MODE = False
+DISP_VEL = False
 
 # This program is a 'driver' for a simple simulation of partilces in a box with
 # periodic boundary conditions. Your objective will be to complete the code here
@@ -175,6 +176,21 @@ def draw():
                     glEnd()
                     glLineWidth(1.0)
         glEnable(GL_LIGHTING)
+
+    # Draw the velocities
+    if DISP_VEL:
+        glColor4f(1.0, 1.0, 1.0, 1.0)  
+        glDisable(GL_LIGHTING)
+        glBegin(GL_LINES)
+        for i in range(p.N):
+            xyz1 = np.array([p.x[i], p.y[i], p.z[i]])
+            vxyz = np.array([p.vx[i], p.vy[i], p.vz[i]])
+            xyz2 = xyz1 + vxyz
+            glVertex3fv(xyz1)
+            glVertex3fv(xyz2)
+        glEnd()
+        glEnable(GL_LIGHTING)
+
     
     glutSwapBuffers()
 
@@ -277,6 +293,7 @@ def key(k, x, y):
     global CSV_DEG_FILE
     global CSV_HEIGHT_FILE
     global CSV_BALLS_FILE
+    global DISP_VEL
     if ord(k) == 27:
         exit()
     elif k == 'w': 
@@ -303,7 +320,11 @@ def key(k, x, y):
         print "Frame Rate: %s" % FRAME_RATE_MULTIPLIER
     elif k == 'v': # enable disable floor vibration
         f.vibrate_floor = True if not f.vibrate_floor else False
+    elif k == 'V': # enable disable velocities
+        print "Display velocities: %s" % DISP_VEL
+        DISP_VEL = True if not DISP_VEL else False
     elif k == '1':
+        print "Random Seeding"
         RECORD = True
         csv_file = '../../data/random' 
         CSV_DEG_FILE = csv_file + '_deg_' + DATE + '.csv'
@@ -318,6 +339,7 @@ def key(k, x, y):
         new_csv(CSV_HEIGHT_FILE, colnames)
         new_csv(CSV_DEG_FILE, colnames)
     elif k == '2':
+        print "Step Seeding"
         RECORD = True
         csv_file = '../../data/step' 
         CSV_DEG_FILE = csv_file + '_deg_' + DATE + '.csv'
@@ -332,6 +354,7 @@ def key(k, x, y):
         new_csv(CSV_HEIGHT_FILE, colnames)
         new_csv(CSV_DEG_FILE, colnames)
     elif k == '3':
+        print "Reverse Step Seeding"
         RECORD = True
         csv_file = '../../data/rstep' 
         CSV_DEG_FILE = csv_file + '_deg_' + DATE + '.csv'
@@ -346,6 +369,7 @@ def key(k, x, y):
         new_csv(CSV_HEIGHT_FILE, colnames)
         new_csv(CSV_DEG_FILE, colnames)
     elif k == '4':
+        print "Binary Seeding"
         RECORD = True
         csv_file = '../../data/binary' 
         CSV_DEG_FILE = csv_file + '_deg_' + DATE + '.csv'

@@ -5,6 +5,62 @@
 
 ############################# Utility Functions ################################
 
+# Calcuates the quartiles for each row in a dataframe. 
+calc.quartiles <- function(df, cols.to.ignore) {
+  tqr <- df
+  quartiles <- data.frame(0, 0, 0, 0, 0)
+  colnames(quartiles) <- colnames(quantile(quartiles))
+  for(i in 1:dim(tqr)[1]) {
+    qrtls <- quantile(tqr[i, !(colnames(tqr) %in% cols.to.ignore)])  
+    quartiles = rbind(quartiles, qrtls)
+  }
+  
+  return(quartiles)
+}
+
+plot.quartiles <- function(qrtls, smoothing=T, vib.range=c(200, 300)) {
+    colors = c(635, 636, 637, 638, 634)
+#     colors = col2rgb(c("rosybrown4", "royalblue4", "salmon4", "seagreen4", "purple4"), alpha=T)
+  if(smoothing) {
+    nms <- colnames(qrtls)
+    x <- 1:dim(qrtls)[1]
+    y <- qrtls[,1]
+    f <- 1/8
+    iter <- 0
+    lo <- lowess(y ~ x, f=f, iter=iter)
+    plot(lo, type='l', ylim=range(qrtls), 
+         ylab='Degree', xlab='Time', 
+         main='Degree of Balls Before and After Applied Vibrations',
+         col=colors[1])
+    for(i in 2:5) {
+      y <- qrtls[,i]
+      lo <- lowess(y ~ x, f=f, iter=1, col=colors[i])
+      lines(lo, type='l')
+    }
+  }
+  else {
+    x <- 1:dim(qrtls)[1]
+    y <- qrtls[,1]
+    plot(y ~ x, type='l', ylim=range(qrtls), 
+         ylab='Degree', xlab='Time', 
+         main='Degree of Balls Before and After Applied Vibrations (Shaded Area)',
+         col=colors[1])
+    for(i in 2:5) {
+      y <- qrtls[,i]
+      lines(y ~ x, type='l', col=colors[i])
+    }
+  }
+   
+  x <- c(vib.range[1], vib.range[2], vib.range[2], vib.range[1])
+  rng <- range(qrtls)
+  y <- c(-20, -20, rng[2] * 2, rng[2] * 2)
+  polygon(y~x, col=rgb(0, 0, 0, 0.25), border=NA)
+  
+  lgnd <- colnames(qrtls)
+  clsr <- colors
+  legend('topleft', legend=lgnd, col=clsr, fill=colors)
+}
+
 #### read.data.table.big
 # Wrapper function for the read.table function. Use this if you wish to load
 # a huge file. The workflow of the function is as follows:
