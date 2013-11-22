@@ -16,7 +16,7 @@ import datetime
 
 # Files to write to
 RECORD = False
-RECORD_TO_FILE = True
+RECORD_TO_FILE = False
 MODE = 1 # Corresponds to keys 0 to disable
 CSV_DEG_FILE = ""
 CSV_HEIGHT_FILE = ""

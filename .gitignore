@@ -1,5 +1,11 @@
 *.py[cod]
 
+# R files
+.Rhistory
+
+# Ignore Mac Files
+.DS_Store
+
 # Ignore swap files.
 *.swp
 
